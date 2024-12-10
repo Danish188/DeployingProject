@@ -1,0 +1,45 @@
+name: CI/CD Deployment
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main  # Trigger when a pull request is merged into the main branch (adjust if needed)
+jobs:
+  deploy:
+    runs-on: self-hosted  # Runs on your local self-hosted runner
+    steps:
+      # Step 1: Checkout Code
+      - name: Checkout code
+        uses: actions/checkout@v3
+      # Step 2: Setup .NET SDK
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 6.0  # Replace with your project's .NET version
+      # Step 3: Restore Dependencies
+      - name: Restore dependencies
+        run: dotnet restore
+      # Step 4: Build the Application
+      - name: Build application
+        run: dotnet build DeployingProject.sln --configuration Release  # Replace 'MySolution.sln' with your actual solution file name
+      # Step 5: Publish the Application
+      - name: Publish application
+        run: dotnet publish DeployingProject -c Release -o ./publish
+      # Step 6: Deploy to IIS
+      - name: Deploy to IIS
+        shell: powershell
+        run: |
+          # Ensure appcmd is available in the PATH
+          $env:Path += ";C:\Windows\System32\inetsrv"
+          # Stop the IIS App Pool
+          & "C:\Windows\System32\inetsrv\appcmd.exe" stop apppool /apppool.name:deployTesting
+          # Copy the published files to IIS root directory
+          robocopy ./publish "C:\inetpub\wwwroot\deployTesting" /mir
+          # Start the IIS App Pool
+          & "C:\Windows\System32\inetsrv\appcmd.exe" start apppool /apppool.name:deployTesting
+
+
+
+
+
+
